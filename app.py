@@ -15,6 +15,7 @@ from flask_wtf import Form
 from forms import *
 
 import sys
+from datetime import date, datetime
 from flask_migrate import Migrate
 
 #----------------------------------------------------------------------------#
@@ -29,68 +30,10 @@ db = SQLAlchemy(app)
 
 migrate = Migrate(app, db)
 
+from models import *
+
 # TODO: connect to a local postgresql database
 
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-
-    #+
-    genres = db.Column(db.String)
-    website_link = db.Column(db.String)
-    seeking_talent = db.Column(db.String)
-    seeking_description = db.Column(db.String)
-    show = db.relationship('Show', backref='venue', lazy=True)
-    #+
-
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-
-    #+
-    website_link = db.Column(db.String)
-    seeking_venue = db.Column(db.String)
-    seeking_description = db.Column(db.String)
-    show = db.relationship('Show', backref='artist', lazy=True)
-    #+
-
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate 
-
-#+
-class Show(db.Model):
-    __tablename__ = 'Show'
-    id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
-    start_time = db.Column(db.DateTime)
-
-#+
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -129,17 +72,14 @@ def venues():
   for location in locations_dict:
    
     venues_info = []
-    print("\n" * 10)
-    print (locations_dict[location])
     for venue in locations_dict[location]:
       venue_info = {
         "id": venue.id,
         "name": venue.name,
-        "num_upcoming_shows": 0 #postponed
+        "num_upcoming_shows": len(venue.show)
       }
 
       venues_info.append(venue_info)
-      #print ("venue_info %s" % venue_info)
 
     area = {
       "city": location[0],
@@ -209,8 +149,36 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
 
+  upcoming_shows = Show.query.filter(Show.venue_id == venue_id).filter(Show.start_time > datetime.now()).all()
+  past_shows = Show.query.filter(Show.venue_id == venue_id).filter(Show.start_time < datetime.now()).all()
+
+  upcoming_shows_list = []
+  past_shows_list = []
+
+  def format(show):
+    formatted_show = {
+      "artist_id": show.artist.id,
+      "artist_name": show.artist.name,
+      "artist_image_link": show.artist.image_link,
+      "start_time": str(show.start_time)
+    }
+    return formatted_show
+
+  for show in upcoming_shows:
+    show = format(show)
+    upcoming_shows_list.append(show)
+
+  for show in past_shows:
+    show = format(show)
+    past_shows_list.append(show)
+
   data = Venue.query.filter(Venue.id == venue_id).first()
   data.website = data.website_link
+  data.upcoming_shows = upcoming_shows_list
+  data.past_shows = past_shows_list
+  data.past_shows_count = len(past_shows)
+  data.upcoming_shows_count = len(upcoming_shows)
+
 
   """data1={
     "id": 1,
@@ -335,7 +303,23 @@ def delete_venue(venue_id):
 
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+  error=False
+  try:
+    venue = Venue.query.filter(Venue.id == venue_id).first()
+    db.session.delete(venue)
+    db.session.commit()
+  except:
+    error=True
+    db.session.rollback()
+    print (sys.exc_info())
+  finally:
+    db.session.close()
+
+  if not error:
+    flash('Venue Has Been Removed')
+  else:
+    flash('Error occured while removing venue fro database')
+  return redirect(url_for('venues'))
 
 #  Artists
 #  ----------------------------------------------------------------
@@ -392,8 +376,37 @@ def show_artist(artist_id):
   # shows the artist page with the given artist_id
   # TODO: replace with real artist data from the artist table, using artist_id
 
+  upcoming_shows = Show.query.filter(Show.artist_id == artist_id).filter(Show.start_time > datetime.now()).all()
+  past_shows = Show.query.filter(Show.artist_id == artist_id).filter(Show.start_time < datetime.now()).all()
+
+  upcoming_shows_list = []
+  past_shows_list = []
+
+  def format(show):
+    formatted_show = {
+      "venue_id": show.venue.id,
+      "venue_name": show.venue.name,
+      "venue_image_link": show.venue.image_link,
+      "start_time": str(show.start_time)
+    }
+    return formatted_show
+
+  for show in upcoming_shows:
+    show = format(show)
+    upcoming_shows_list.append(show)
+
+  for show in past_shows:
+    show = format(show)
+    past_shows_list.append(show)
+
   artist = Artist.query.get(artist_id)
   artist.website = artist.website_link
+  artist.upcoming_shows = upcoming_shows_list
+  artist.past_shows = past_shows_list
+  artist.past_shows_count = len(past_shows)
+  artist.upcoming_shows_count = len(upcoming_shows)
+
+
 
   """data1={
     "id": 4,
@@ -597,7 +610,7 @@ def shows():
   # TODO: replace with real venues data.
 
   data = []
-  shows = Show.query.all()
+  shows = Show.query.filter(Show.start_time > datetime.now()).all()
 
   for show in shows:
     show_info = {
