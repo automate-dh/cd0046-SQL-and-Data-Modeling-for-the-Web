@@ -11,7 +11,7 @@ from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from forms import *
 
 import sys
@@ -114,11 +114,8 @@ def venues():
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
-  # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
-  # seach for Hop should return "The Musical Hop".
-  # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
   search_term = request.form['search_term']
-  result = Venue.query.filter(Venue.name.like("%%%s%%" % search_term)).all()
+  result = Venue.query.filter(Venue.name.ilike("%%%s%%" % search_term)).all()
   data = []
 
   for i in result:
@@ -270,28 +267,27 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
-  error = False
-  try: 
-    venue_info = request.form
-    venue_info = {key: venue_info[key] for key in venue_info}
-    venue = Venue(**venue_info)
-    db.session.add(venue)
-    db.session.commit()
-  except:
+
+  form = VenueForm(csrf_enabled=False)
+
+  if form.validate_on_submit():
+    error = False
+    try:
+      venue = Venue(**form.data)
+      db.session.add(venue)
+      db.session.commit()
+    except:
+      error = True
+      db.session.rollback()
+      print (sys.exc_info())
+    finally:
+      db.session.close()
+  else:
     error = True
-    db.session.rollback()
-    print (sys.exc_info())
-  finally:
-    db.session.close()
+
   if not error:
-    # on successful db insert, flash success
     flash('Venue ' + request.form['name'] + ' was successfully listed!')
   else:
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
     flash('Venue ' + request.form['name'] + ' was !successfully listed!')
   
   return render_template('pages/home.html')
@@ -507,20 +503,21 @@ def edit_artist(artist_id):
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
-  # TODO: take values from the form submitted, and update existing
-  # artist record with ID <artist_id> using the new attributes
+  form = ArtistForm(csrf_enabled=False)
 
-  error = False
-  try:
-    artist_info = request.form
-    Artist.query.filter(Artist.id == artist_id).update(artist_info)
-    db.session.commit()
-  except:
-    error = True
-    db.session.rollback()
-    print (sys.exc_info())
-  finally:
-    db.session.close()
+  if form.validate_on_submit():
+    error = False
+    try:
+      Artist.query.filter(Artist.id == artist_id).update(form.data)
+      db.session.commit()
+    except:
+      error = True
+      db.session.rollback()
+      print (sys.exc_info())
+    finally:
+      db.session.close()
+  else:
+    error=True
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
@@ -548,19 +545,22 @@ def edit_venue(venue_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
-  # TODO: take values from the form submitted, and update existing
-  # venue record with ID <venue_id> using the new attributes
-  error = False
-  try:
-    venue_info = request.form
-    Venue.query.filter(Venue.id == venue_id).update(venue_info)
-    db.session.commit()
-  except:
-    error = True
-    db.session.rollback()
-    print (sys.exc_info())
-  finally:
-    db.session.close()
+  form = VenueForm(csrf_enabled=False)
+
+  if form.validate_on_submit():
+    error = False
+    try:
+      Venue.query.filter(Venue.id == venue_id).update(form.data)
+      db.session.commit()
+    except:
+      error = True
+      db.session.rollback()
+      print (sys.exc_info())
+    finally:
+      db.session.close()
+  else:
+    error=True
+
   return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
@@ -573,30 +573,27 @@ def create_artist_form():
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
-  # called upon submitting the new artist listing form
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
 
-  error = False
-  try:
-    artist_info = request.form
-    artist_info = {key: artist_info[key] for key in artist_info}
-    artist = Artist(**artist_info)
-    db.session.add(artist)
-    db.session.commit()
-  except:
+  form = ArtistForm(csrf_enabled=False)
+
+  if form.validate_on_submit():
+    error = False
+    try:
+      artist = Artist(**form.data)
+      db.session.add(artist)
+      db.session.commit()
+    except:
+      error = True
+      db.session.rollback()
+      print(sys.exc_info())
+    finally:
+      db.session.close()
+  else:
     error = True
-    db.session.rollback()
-    print(sys.exc_info())
-  finally:
-    db.session.close()
 
   if not error:
-    # on successful db insert, flash success
     flash('Artist ' + request.form['name'] + ' was successfully listed!')
   else:
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
     flash('Artist ' + request.form['name'] + ' was !successfully listed!')
   return render_template('pages/home.html')
 
@@ -669,32 +666,27 @@ def create_shows():
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
-  # called to create new shows in the db, upon submitting new show listing form
-  # TODO: insert form data as a new Show record in the db, instead
+  form = ShowForm()
 
-  error = False
-  try:
-    show_info = request.form
-    time_values = request.form['start_time']
-    print (show_info)
-    show_info = {key: show_info[key] for key in show_info}
-    show = Show(**show_info)
-    db.session.add(show)
-    db.session.commit()
-  except:
-    error = True
-    db.session.rollback()
-    print (sys.exc_info())
-  finally:
-    db.session.close()
+  form = ShowForm(csrf_enabled=False)
+  if form.validate_on_submit():
+    error = False
+    try:
+      show = Show(**form.data)
+      db.session.add(show)
+      db.session.commit()
+    except:
+      error = True
+      db.session.rollback()
+      print (sys.exc_info())
+    finally:
+      db.session.close()
+  else:
+    error=True
 
-  # on successful db insert, flash success
   if not error:
     flash('Show was successfully listed!')
   else:
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Show could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
     flash('Show was !successfully listed!')
   return render_template('pages/home.html')
 
