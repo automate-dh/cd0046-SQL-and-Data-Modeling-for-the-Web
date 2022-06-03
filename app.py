@@ -504,7 +504,7 @@ def edit_artist(artist_id):
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
   form = ArtistForm(csrf_enabled=False)
-
+  
   if form.validate_on_submit():
     error = False
     try:
@@ -518,6 +518,7 @@ def edit_artist_submission(artist_id):
       db.session.close()
   else:
     error=True
+    print (form.errors)
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
@@ -607,7 +608,7 @@ def shows():
   # TODO: replace with real venues data.
 
   data = []
-  shows = Show.query.filter(Show.start_time > datetime.now()).all()
+  shows = Show.query.all() #filter(Show.start_time > datetime.now()).all()
 
   for show in shows:
     show_info = {
@@ -666,21 +667,29 @@ def create_shows():
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
-  form = ShowForm()
 
   form = ShowForm(csrf_enabled=False)
+
   if form.validate_on_submit():
+
+    artist = Artist.query.get(form.artist_id.data)
+    artist_available_time = artist.available_from, artist.available_till
+    proposed_show_time = form.start_time.data.time()
+
     error = False
-    try:
-      show = Show(**form.data)
-      db.session.add(show)
-      db.session.commit()
-    except:
-      error = True
-      db.session.rollback()
-      print (sys.exc_info())
-    finally:
-      db.session.close()
+    if artist_available_time[0] <= proposed_show_time < artist_available_time[1]:
+      try:
+        show = Show(**form.data)
+        db.session.add(show)
+        db.session.commit()
+      except:
+        error = True
+        db.session.rollback()
+        print (sys.exc_info())
+      finally:
+        db.session.close()
+    else:
+      flash('Artist not available, Check artist page for available times')
   else:
     error=True
 
