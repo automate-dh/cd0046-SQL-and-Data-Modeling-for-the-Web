@@ -1,3 +1,4 @@
+from enum import unique
 from app import db
 
 #----------------------------------------------------------------------------#
@@ -7,7 +8,7 @@ from app import db
 class Venue(db.Model):
     __tablename__ = 'Venue'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
+    name = db.Column(db.String, nullable=False, unique=True)
     genres = db.Column(db.String, nullable=False)
     website_link = db.Column(db.String)
     seeking_talent = db.Column(db.Boolean)
@@ -25,7 +26,7 @@ class Venue(db.Model):
 class Artist(db.Model):
     __tablename__ = 'Artist'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
+    name = db.Column(db.String, nullable=False, unique=True)
     city = db.Column(db.String(120), nullable=False)
     state = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(120))
