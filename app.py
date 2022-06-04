@@ -268,7 +268,7 @@ def create_venue_form():
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
 
-  form = VenueForm(csrf_enabled=False)
+  form = VenueForm(meta={'csrf': False})
 
   if form.validate_on_submit():
     error = False
@@ -506,7 +506,7 @@ def edit_artist(artist_id):
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
-  form = ArtistForm(csrf_enabled=False)
+  form = ArtistForm(meta={'csrf': False})
   
   if form.validate_on_submit():
     error = False
@@ -549,7 +549,7 @@ def edit_venue(venue_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
-  form = VenueForm(csrf_enabled=False)
+  form = VenueForm(meta={'csrf': False})
 
   if form.validate_on_submit():
     error = False
@@ -578,7 +578,7 @@ def create_artist_form():
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
 
-  form = ArtistForm(csrf_enabled=False)
+  form = ArtistForm(meta={'csrf': False})
 
   if form.validate_on_submit():
     error = False
@@ -672,7 +672,7 @@ def create_shows():
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
 
-  form = ShowForm(csrf_enabled=False)
+  form = ShowForm(meta={'csrf': False})
 
   if form.validate_on_submit():
 
